@@ -1,0 +1,9 @@
+# Core deep learning stack (CPU-only, Windows compatible)
+torch==2.8.0+cpu
+torchaudio==2.8.0+cpu
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# Audio and numeric dependencies
+soundfile==0.13.1
+numpy==2.3.4
+packaging==25.0

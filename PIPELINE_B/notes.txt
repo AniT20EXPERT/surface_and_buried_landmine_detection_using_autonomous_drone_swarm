@@ -1,0 +1,123 @@
+wake word: drone swarm / start swarm
+
+
+dalal.anirudhha2661916@gmail.com
+PORCUPINE_ACCESS_KEY=GmzEtZtnAEZZ4SZHdAM3r3Nqf0Kx0z7cvYSEFcPQezUpn3L5x80V9g==
+
+23bit148@sot.pdpu.ac.in
+PORCUPINE_ACCESS_KEY=FURiUNH9LLqE4hEerWetPjYRL9z8NxygVhWtpUBvU3MYqhL2mwog3Q==
+
+
+
+
+activation phrase: "drone swarm" [for windows testing]
+activation phrase: "start swarm" [for rasberry pi testing]
+
+add a confirm command text to speech mesaage for the respective command and then if user says yes then execute other wise fail to execute, [create a flag: execute/cancel], also see how to handle invalid commands that are forced into knowable words
+
+
+0)
+command: some INVALID command
+service_call = /unknown
+params = {}
+
+1)
+	a)
+	command: "start" + X [integer]
+	service_call = /initialise
+	params = {X}
+	b)
+	command: "start"
+	service_call = /initialise
+	params = {ALL_DRONES}
+
+2)
+	a)
+	command: "scan" + X [integer]
+	service_call = /generate_scan_waypoints
+	params = {X}
+
+	b)
+	command: "scan"
+	service_call = /generate_scan_waypoints
+	params = {ALL_DRONES}
+
+3)
+	a)
+	command: "pause scan" + X [integer]
+	service_call = /pause_drone
+	params = {X}
+
+	b)
+	command: "pause scan"
+	service_call = /pause_drone
+	params = {ALL_DRONES}
+
+4)	a)
+	command: "resume scan" + X [integer]
+	service_call = /resume_drone
+	params = {X}
+
+	b)
+	command: "resume scan"
+	service_call = /resume_drone
+	params = {ALL_DRONES}
+
+5)	a)
+	command: "restart scan" + X [integer]
+	service_call = /restart_scan
+	params = {X}
+
+	b)
+	command: "restart scan"
+	service_call = /restart_scan
+	params = {ALL_DRONES}
+
+
+6)	a)
+	command: "mark" + X [integer]
+	service_call = /mark_mines
+	params = {X}
+
+	b)
+	command: "mark"
+	service_call = /mark_mines
+	params = {ALL_DRONES}
+
+7)	a)
+	command: "pause mark" + X [integer]
+	service_call = /mark_mines_pause
+	params = {X}
+
+	b)
+	command: "pause mark"
+	service_call = /mark_mines_pause
+	params = {ALL_DRONES}
+
+8) 	a)
+	command: "resume mark" + X [integer]
+	service_call = /mark_mines_resume
+	params = {X}
+
+	b)
+	command: "resume mark"
+	service_call = /mark_mines_resume
+	params = {ALL_DRONES}
+
+9)
+command: "generate path"
+service_call = /generate_path
+params = {}
+
+10)
+command: "start guidance"
+service_call = /start_guidance
+params = {}
+
+11)
+command: "pause guidance"
+service_call = /pause_guidance
+params = {}
+
+
+check commands and invalid commands, similar sounding commands

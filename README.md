@@ -446,5 +446,228 @@ The `intent_analyser` function supports the following commands.
 | **Fallback** | | |
 | *(any other phrase)* | `/unknown` | `{}` |
 
+---
+
+## 1\. Documentation: `voicecommandcontroller.py`
+
+This module defines the `VoiceCommandController`, a high-level Python class that encapsulates the entire speech-to-command pipeline. It is designed to be a reusable, "plug-and-play" library for adding voice control to other applications.
+
+The class handles:
+
+  * Loading and managing all necessary models.
+  * Opening and controlling the audio stream.
+  * Detecting a wake word.
+  * Recording a command using Voice Activity Detection (VAD).
+  * Transcribing the command using Speech-to-Text (STT).
+  * Parsing the command into a service call.
+  * Handling the "yes/no" confirmation loop.
+  * Providing a callback to the parent application with the final, confirmed command.
+
+### Core Technologies
+
+| Technology | Purpose | Library |
+| :--- | :--- | :--- |
+| **Wake Word** | Detects the "drone swarm" hotword. | [Picovoice Porcupine](https://picovoice.ai/platform/porcupine/) |
+| **VAD** | Detects when a user starts/stops speaking. | [Silero VAD](https://github.com/snakers4/silero-vad) |
+| **STT** | Transcribes spoken audio to text. | [Vosk](https://alphacephei.com/vosk/) |
+| **Audio I/O** | Captures microphone data. | PyAudio |
+
 -----
 
+### Class: `VoiceCommandController`
+
+`class VoiceCommandController(porcupine_access_key, wake_word_path, vosk_model_path, ...)`
+
+A library class for voice-controlled drone swarm commands. Handles wake word detection, speech recording, transcription, and command parsing.
+
+#### Initialization (`__init__`)
+
+When you create an instance of this class, it loads all models (VAD, Vosk, Porcupine) and opens the audio stream.
+
+| Parameter | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `porcupine_access_key`| `Optional[str]` | `None` | Your Picovoice AccessKey. If `None`, it loads from `.env`. |
+| `wake_word_path` | `str` | `"models/..."` | Path to the `.ppn` wake word file. |
+| `vosk_model_path` | `str` | `"models/..."` | Path to the Vosk model directory. |
+| `audio_device_index`| `Optional[int]`| `2` | The index of your microphone. Use `None` for default. |
+| `sample_rate` | `int` | `16000` | Audio sample rate (must be 16000 for Vosk/Silero). |
+
+#### Main Public Methods
+
+These are the primary methods you will use to interact with the controller.
+
+  * `run(blocking: bool = True)`
+
+      * Starts the main listening loop.
+      * If `blocking=True` (default), this function will run forever, listening for the wake word and handling commands until you stop the script (Ctrl+C).
+      * If `blocking=False`, it will process *one* wake word/command cycle and then return.
+
+  * `set_command_callback(callback: Callable)`
+
+      * This is the **most important method** for getting data out.
+      * You pass it a function (the "callback") that will be called *after* a command is fully processed (including "yes/no" confirmation).
+      * Your callback function **must** accept three arguments:
+        1.  `service` (str): The parsed service name (e.g., `"/initialise"`).
+        2.  `params` (any): The parameters for the service (e.g., `1` or `"ALL_DRONES"`).
+        3.  `execute` (bool): `True` if the user said "yes," `False` if they said "no".
+
+  * `process_wake_word_detection() -> bool`
+
+      * Processes a single frame of audio. Returns `True` if the wake word was detected *in that frame*, otherwise `False`.
+      * This is used for **non-blocking** loops (see Example 3 in `usage_example.py`).
+
+  * `handle_voice_command() -> Optional[Tuple[str, any, bool]]`
+
+      * Runs the full command-handling flow:
+        1.  Plays a "beep" (prints to console).
+        2.  Records command with VAD.
+        3.  Transcribes command.
+        4.  Parses command.
+        5.  Asks for confirmation.
+        6.  Records "yes/no" response.
+        7.  Transcribes response.
+      * Returns a tuple `(service, params, execute_bool)` if successful, or `None` if the user gave an invalid command or response.
+
+  * `cleanup()`
+
+      * Closes the audio stream and releases all resources from Porcupine and PyAudio. This is critical to call when your program exits.
+
+#### Context Manager Support
+
+The class can be used as a context manager to ensure `cleanup()` is called automatically. This is the recommended way to use the class.
+
+```python
+with VoiceCommandController() as controller:
+    # controller is initialized and audio stream is open
+    controller.run()
+# __exit__ is called, and controller.cleanup() runs automatically
+```
+
+#### Utility & Static Methods
+
+These methods are public and can be used for convenience or testing.
+
+  * `parse_command(input_text: str) -> Tuple[str, any]`
+
+      * The core intent parser. Maps text like `"start one"` to `("/initialise", 1)`.
+
+  * `get_supported_commands() -> List[str]`
+
+      * A **`staticmethod`** that returns the complete list of all valid command phrases (including "yes" and "no"). This list is fed to Vosk to improve transcription accuracy.
+
+  * `transcribe_vosk(audio_path: str) -> str`
+
+      * Transcribes a given `.wav` file using the loaded Vosk model and the built-in command list as a grammar.
+
+  * `record_until_silence(...) -> Optional[np.ndarray]`
+
+      * Records audio from the mic until VAD detects silence.
+
+  * `save_wav(audio_data: np.ndarray, filename: str)`
+
+      * Saves a NumPy array of audio data to a `.wav` file.
+
+#### Command Reference
+
+The `parse_command` method supports the following commands:
+
+| Voice Command | Service Call | Parameters |
+| :--- | :--- | :--- |
+| "start one" / "start two" ... | `/initialise` | `1`, `2`, `3`, or `4` |
+| "start" | `/initialise` | `"ALL_DRONES"` |
+| "scan one" / "scan two" ... | `/generate_scan_waypoints` | `1`, `2`, `3`, or `4` |
+| "scan" | `/generate_scan_waypoints` | `"ALL_DRONES"` |
+| "pause scan one" ... | `/pause_drone` | `1`, `2`, `3`, or `4` |
+| "pause scan" | `/pause_drone` | `"ALL_DRONES"` |
+| ... (*all other commands*) ... | ... | ... |
+| "generate path" | `/generate_path` | `{}` |
+| "start guidance" | `/start_guidance` | `{}` |
+| "pause guidance" | `/pause_guidance` | `{}` |
+
+-----
+
+## 2\. Documentation: `usage_example.py`
+
+This file provides several examples of how to import and use the `VoiceCommandController` library.
+
+### Example 1: Simple Usage with Callback
+
+This is the most common and straightforward way to use the controller. It uses the `blocking=True` mode of `run()` and handles all commands through a callback.
+
+```python
+def command_handler(service, params, execute):
+    """Handle executed commands"""
+    if execute:
+        print(f"✅ Executing: {service} with params {params}")
+        # Add your ROS service call or other logic here
+    else:
+        print(f"❌ Command cancelled: {service}")
+
+# Create controller
+controller = VoiceCommandController(audio_device_index=2)
+# Register the callback
+controller.set_command_callback(command_handler)
+# Run forever
+controller.run()
+```
+
+### Example 2: Using Context Manager
+
+This is the recommended, safest pattern. It's identical to Example 1 but uses a `with` statement to ensure `controller.cleanup()` is *always* called, even if the program crashes.
+
+```python
+with VoiceCommandController() as controller:
+    controller.set_command_callback(my_command_callback)
+    controller.run()
+```
+
+### Example 3: Manual Control (Non-blocking)
+
+This advanced pattern is for integrating the controller into an existing application's main loop (e.g., a GUI, a game, or a ROS node) without blocking it.
+
+```python
+controller = VoiceCommandController()
+try:
+    while True:
+        # Your other application logic can go here
+        # e.g., update_gui(), check_robot_status()
+
+        # Check for a wake word
+        if controller.process_wake_word_detection():
+            print("Wake word detected!")
+
+            # Handle the full command interaction
+            result = controller.handle_voice_command()
+
+            if result:
+                service, params, execute = result
+                if execute:
+                    print(f"Execute: {service}({params})")
+                    # Your custom logic here
+
+except KeyboardInterrupt:
+    print("\nStopping...")
+finally:
+    controller.cleanup()
+```
+
+### Example 4: Get List of Supported Commands
+
+This shows how to access the static list of all valid command phrases.
+
+```python
+commands = VoiceCommandController.get_supported_commands()
+print("Supported commands:", commands)
+```
+
+### Example 5: Parse Command
+
+This shows how to use the controller's parsing logic by itself for testing or other purposes.
+
+```python
+controller = VoiceCommandController()
+service, params = controller.parse_command("start scan one")
+print(f"Command parsed: {service} with {params}")
+controller.cleanup()
+```
+----

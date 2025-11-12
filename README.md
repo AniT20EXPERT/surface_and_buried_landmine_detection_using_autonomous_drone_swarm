@@ -1,4 +1,4 @@
-# drone_swarm_algos_robofest
+# Drone_swarm_algos_robofest
 
 
 THE FOLLOWING DIRECTORIES IN THIS REPO ARE AS FOLLOWS:

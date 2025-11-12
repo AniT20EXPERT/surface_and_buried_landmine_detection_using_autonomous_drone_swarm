@@ -133,7 +133,6 @@ This final stage uses the detection data to find a safe and efficient route acro
 
 -----
 
-Here’s a clean and professional **Markdown** documentation section for your file and class organization:
 
 ---
 
@@ -219,6 +218,233 @@ Represents the **complete end-to-end system** integrating all components.
 Demonstrates **example usage** of the `DroneLandmineSystem` library with **five test cases** showing different pipeline configurations or datasets.
 
 
-----
 
+-----
+
+# PIPELINE\_B: Advanced Speech-to-Command
+
+This project implements a complete, hands-free voice command pipeline. It is designed to run locally, starting from wake-word detection and ending with confirmed command execution.
+
+The full flow is:
+**Wake Word -\> Voice Activity Detection (VAD) -\> Speech-to-Text (STT) -\> Intent Analysis -\> User Confirmation (TTS -\> VAD -\> STT) -\> Execution**
+
+## Core Technologies
+
+  * **Wake Word:** [Picovoice Porcupine](https://picovoice.ai/platform/porcupine/) for highly-accurate, low-power "drone swarm" detection.
+  * **VAD:** [Silero VAD](https://github.com/snakers4/silero-vad) to detect when a user starts and stops speaking.
+  * **Speech-to-Text (STT):** [Vosk](https://alphacephei.com/vosk/) for fast, offline transcription.
+  * **Intent Analysis:** A custom Python function (`intent_analyser`) to map transcribed text to specific service calls and parameters.
+  * **Audio I/O:** [PyAudio](https://people.csail.mit.edu/hubert/pyaudio/) for capturing microphone data.
+
+## Workflow
+
+The `speech_to_command.py` script follows this logical loop:
+
+1.  **Listen for Wake Word:** Porcupine continuously processes the audio stream, waiting for the "drone swarm" keyword.
+2.  **Command Recording:**
+      * Once the wake word is detected, the system plays an alert (simulated by a `print` statement) and begins recording.
+      * `record_until_silence()` uses Silero VAD to capture audio until the user stops speaking for a set duration (1.5s).
+3.  **Command Transcription:**
+      * The recorded audio is saved to `spoken_command.wav`.
+      * `transcribe_vosk()` transcribes the audio.
+      * **Crucially**, it passes the *entire list of valid commands* (from `intent_analyser(get_commands=True)`) to the Vosk recognizer as a grammar list. This significantly improves accuracy by biasing the STT model to pick a valid command over a similar-sounding, invalid one.
+4.  **Intent Analysis:**
+      * `intent_analyser()` parses the transcribed text (e.g., "start one").
+      * It returns a `service` (e.g., `/initialise`) and `params` (e.g., `1`).
+      * If the command is not recognized, it returns `/unknown`.
+5.  **Confirmation Loop:**
+      * **Invalid Command:** If the service is `/unknown`, it announces "invalid command" (via `TEXT_4_TEXT_TO_SPEECH`) and loops back to step 1.
+      * **Valid Command:**
+        1.  The system announces the intended action for confirmation: `f"do i execute: {text_transcribed}, with service: {service}"`.
+        2.  It immediately calls `record_until_silence()` again (with a longer silence limit of 2.3s) to listen for "yes" or "no".
+        3.  The response is saved to `response_to_command.wav` and transcribed.
+6.  **Execution / Cancellation:**
+      * If the user says **"yes"**, the `TO_EXECUTE` flag is set to `True`, and an "Executing" message is prepared.
+      * If the user says **"no"**, the `TO_EXECUTE` flag is set to `False`, and a "Denied" message is prepared.
+      * If the response is not "yes" or "no", it's treated as an invalid response, and the loop restarts.
+7.  **Loop:** The process restarts from step 1, waiting for the wake word.
+
+> **Note on TTS:** The script generates messages in the `TEXT_4_TEXT_TO_SPEECH` variable. These are currently printed to the console. A full implementation would pipe this text to a Text-to-Speech engine (e.g., Silero TTS, pyttsx3) to be spoken aloud.
+
+## Project Structure
+
+For the script to run correctly, your project must be organized as follows:
+
+```
+speech-to-command/
+├── models/
+│   ├── vosk-model-small-en-us-0.15/
+│   │   ├── am/
+│   │   ├── conf/
+│   │   └── ... (all other vosk model files)
+│   ├── Drone-Swarm_en_windows_v3_0_0.ppn
+│   └── start-swarm_en_raspberry-pi_v3_0_0.ppn
+│
+├── .env
+├── requirements.txt
+├── voicecommandcontroller.py
+├── usage_example.py
+├── tts.py
+└── speech_to_command.py
+```
+
+  * **`models/`**: This folder contains all necessary models.
+  * **`models/vosk-model-small-en-us-0.15/`**: The *unzipped* directory containing the Vosk model files.
+  * **`models/*.ppn`**: The Porcupine keyword files, *unzipped* and placed here.
+
+## Setup & Installation
+
+### 1\. Prerequisites
+
+  * Python 3.8+
+  * A Picovoice Access Key (get one for free from [Picovoice Console](https://console.picovoice.ai/))
+  * A working microphone.
+
+### 2\. Create Project Directory
+
+Set up the folder structure as shown above.
+
+  * Download and unzip the [Vosk model](https://alphacephei.com/vosk/models) (`vosk-model-small-en-us-0.15`) into the `models/` folder.
+  * Download and unzip your Porcupine wake word files (`.ppn`) into the `models/` folder.
+
+### 3\. Python Environment & Dependencies
+
+It is highly recommended to use a virtual environment:
+
+```bash
+# Create a virtual environment
+python -m venv venv
+
+# Activate it
+# Windows
+.\venv\Scripts\activate
+# macOS/Linux
+source venv/bin/activate
+```
+
+### 4\. Install Requirements
+
+Create a file named `requirements.txt` with the following content:
+
+```ini
+# Core deep learning stack (CPU-only, Windows compatible)
+torch==2.8.0+cpu
+torchaudio==2.8.0+cpu
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# Audio and numeric dependencies
+soundfile==0.13.1
+numpy==2.3.4
+packaging==24.1
+
+# Vosk STT
+vosk==0.3.45
+
+# Porcupine Wake Word
+pvporcupine==3.0.2
+
+# PyAudio for mic access
+pyaudio==0.2.14
+
+# .env file support
+python-dotenv==1.0.1
+```
+
+Install the requirements:
+
+```bash
+pip install -r requirements.txt
+```
+
+### 5\. Configuration
+
+1.  **Create the `.env` file** in the root of your project:
+
+    ```
+    PORCUPINE_ACCESS_KEY="YOUR_ACCESS_KEY_HERE"
+    ```
+
+    Replace `"YOUR_ACCESS_KEY_HERE"` with your actual key from the Picovoice Console.
+
+2.  **Set Audio Device (if needed):**
+    The script defaults to `input_device_index=2`. This may not be correct for your system. To find the right index, run this small script:
+
+    ```python
+    import pyaudio
+    p = pyaudio.PyAudio()
+    for i in range(p.get_device_count()):
+        info = p.get_device_info_by_index(i)
+        if info['maxInputChannels'] > 0:
+            print(f"Index: {i} - Name: {info['name']}")
+    p.terminate()
+    ```
+
+    Find the index of your microphone and change this line in `speech_to_command.py`:
+
+    ```python
+    audio_stream = pa.open(
+        ...
+        input_device_index=2,  # <-- CHANGE THIS
+        ...
+    )
+    ```
+
+3.  **Set Wake Word:**
+    The script is set to use the Windows wake word.
+    WINDOWS NATIVE WAKE PHRASE: "DRONE SWARM"
+    ```python
+    porcupine = pvporcupine.create(
+        access_key=ACCESS_KEY,
+        keyword_paths=["models/Drone-Swarm_en_windows_v3_0_0.ppn"] # <-- CHANGE THIS
+    )
+    ```
+
+    To use the Raspberry Pi model, change the path to `"models/start-swarm_en_raspberry-pi_v3_0_0.ppn"`.
+    RPI NATIVE WAKE PHRASE: "START SWARM"
+## Usage
+
+Once all setup and configuration steps are complete, run the script from your activated virtual environment:
+
+```bash
+python speech_to_command.py
+```
+
+The script will initialize all models (this may take a few seconds) and then print:
+
+`🚀 Listening for wake word... (Ctrl+C to stop)`
+
+You can now say "drone swarm" to activate the command pipeline.
+
+## Command Reference
+
+The `intent_analyser` function supports the following commands.
+
+| Voice Command | Service Call | Parameters |
+| :--- | :--- | :--- |
+| "start one" / "start two" ... | `/initialise` | `1`, `2`, `3`, or `4` |
+| "start" | `/initialise` | `"ALL_DRONES"` |
+| "scan one" / "scan two" ... | `/generate_scan_waypoints` | `1`, `2`, `3.`, or `4` |
+| "scan" | `/generate_scan_waypoints` | `"ALL_DRONES"` |
+| "pause scan one" ... | `/pause_drone` | `1`, `2`, `3`, or `4` |
+| "pause scan" | `/pause_drone` | `"ALL_DRONES"` |
+| "resume scan one" ... | `/resume_drone` | `1`, `2`, `3`, or `4` |
+| "resume scan" | `/resume_drone` | `"ALL_DRONES"` |
+| "restart scan one" ... | `/restart_scan` | `1`, `2`, `3`, or `4` |
+| "restart scan" | `/restart_scan` | `"ALL_DRONES"` |
+| "mark one" / "mark two" ... | `/mark_mines` | `1`, `2`, `3`, or `4` |
+| "mark" | `/mark_mines` | `"ALL_DRONES"` |
+| "pause mark one" ... | `/mark_mines_pause` | `1`, `2`, `3`, or `4` |
+| "pause mark" | `/mark_mines_pause` | `"ALL_DRONES"` |
+| "resume mark one" ... | `/mark_mines_resume` | `1`, `2`, `3`, or `4` |
+| "resume mark" | `/mark_mines_resume` | `"ALL_DRONES"` |
+| "generate path" | `/generate_path` | `{}` |
+| "start guidance" | `/start_guidance` | `{}` |
+| "pause guidance" | `/pause_guidance` | `{}` |
+| **Confirmation** | | |
+| "yes" | (Confirms execution) | `N/A` |
+| "no" | (Cancels execution) | `N/A` |
+| **Fallback** | | |
+| *(any other phrase)* | `/unknown` | `{}` |
+
+-----
 

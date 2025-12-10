@@ -8,6 +8,12 @@ PIPELINE_A: MAIN DRONE STITCHING + DETECTION + PATH PLANNING
 2) running yolo + sahi on stitched image for detection
 3) get path planning [as a list of coords in image pixels] [so some mapping between drone x,y,z and the actual coords in form of pixels in stitched image]
 
+![Screenshot 2025-12-10 20:23:09](Screenshot%202025-12-10%20202309.png)
+![Screenshot 2025-12-10 20:23:54](Screenshot%202025-12-10%20202354.png)
+![Screenshot 2025-12-10 20:24:39](Screenshot%202025-12-10%20202439.png)
+
+
+
 PIPELINE_B: ADVANCED SPEECH TO TEXT WITH WAKE WORD + USER COMMAND IDENTIFICATION + CONFIRMATION + EXECUTION SERVICE/PARAM CALLS + TEXT TO SPEECH 
 1) porcupine wake word detection
 2) silero-vad Voice activity detection

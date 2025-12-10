@@ -25,6 +25,7 @@ YOLO_PREP: THE CUSTOM SYNTHETIC IMAGE DATASET GENERATION SCRIPT AND THE YOLO TRA
 2) training yolo script
 3) testing and running inference script
 
+[for in-depth information on yolo training + synthetic data generation pls go through the report.pdf ]
 
 -----
 

@@ -9,7 +9,6 @@ PIPELINE_A: MAIN DRONE STITCHING + DETECTION + PATH PLANNING
 3) get path planning [as a list of coords in image pixels] [so some mapping between drone x,y,z and the actual coords in form of pixels in stitched image]
 
 ![Screenshot 2025-12-10 20:23:09](Screenshot%202025-12-10%20202309.png)
-![Screenshot 2025-12-10 20:23:54](Screenshot%202025-12-10%20202354.png)
 ![Screenshot 2025-12-10 20:24:39](Screenshot%202025-12-10%20202439.png)
 
 
@@ -30,7 +29,7 @@ YOLO_PREP: THE CUSTOM SYNTHETIC IMAGE DATASET GENERATION SCRIPT AND THE YOLO TRA
 1) synthetic image generation script
 2) training yolo script
 3) testing and running inference script
-
+![Screenshot 2025-12-10 20:23:54](Screenshot%202025-12-10%20202354.png)
 [for in-depth information on yolo training + synthetic data generation pls go through the report.pdf ]
 
 -----

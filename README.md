@@ -1,4 +1,4 @@
-# Drone_swarm_algos_robofest
+# Drone Swarm Algos
 
 
 THE FOLLOWING DIRECTORIES IN THIS REPO ARE AS FOLLOWS:
@@ -804,3 +804,6 @@ if __name__ == "__main__":
     # speak_mimic("Hello! This is mimic one speaking.")
 ```
 ----
+
+# RF based buried landmine detection:
+[THIS WORK IS OUR USP AND HENCE CANNOT BE MADE PUBLIC]
